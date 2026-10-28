@@ -5,10 +5,10 @@ python -m unittest research.test_mechanism research.test_loss_spec
 python -m research.run_m0
 ```
 
-`results/m0-mechanism-001/notes.md` 只解释奖励符号和脚本动作匹配。`test_loss_spec` 只解释 KL 开关和回报切断。两个都通过，也不说明真实老师会误罚，更没有训练收益。
+`results/m0-mechanism-001/notes.md` 只解释奖励符号和脚本动作匹配。`test_loss_spec` 只解释老师何时出现、KL 系数、候选奖励和回报切断。都通过，也不说明真实老师会误罚，更没有训练收益。
 
 ## 下一件该做的事
 
-用真实学生轨迹和真实老师，把师生不一致的步标成六类：顺序不同、换工具、粒度不同、多了无害步骤、真错、关键步走错。先量「不同但没错」的步被 token KL 和动作匹配压分的比例。
+按 [EXPERIMENTS.md](EXPERIMENTS.md) 里写死的 P0 协议做：在 \(\tau^2\)-bench retail 上收学生轨迹，在学生经过的状态上让老师贪心一次、采样四次，把不一致的步标成七类，再算 token 侧和动作侧的压分比例。
 
-比例很小就停，不写训练器。比例很大，再做评分点质量和只打分、不干预的训练。纠正、早停和 `train/` 放在那之后。
+门槛不过就停，不写训练器。过了再做 P1 评分点质量。纠正、早停和 `train/` 放在那之后。

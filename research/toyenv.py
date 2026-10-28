@@ -2,6 +2,11 @@
 
 The environment is a mechanism fixture. It does not estimate how often a real
 teacher model penalizes legal reorderings.
+
+Step.action is what the student called. Step.target is the subgoal the
+environment would verify. Two different actions with the same target are
+equivalent here by construction; whether a real checker recognizes that is
+the P1 question, not something this fixture can show.
 """
 
 from __future__ import annotations
@@ -114,7 +119,7 @@ def generate_episodes() -> list[Episode]:
     plan: list[tuple[str, int, tuple[Step, ...]]] = [
         (
             "canonical",
-            15,
+            10,
             (
                 Step("a", "a"),
                 Step("b", "b"),
@@ -124,12 +129,32 @@ def generate_episodes() -> list[Episode]:
         ),
         (
             "legal_swap",
-            20,
+            15,
             (
                 Step("a", "a"),
                 Step("c", "c"),
                 Step("b", "b"),
                 Step("d", "d"),
+            ),
+        ),
+        (
+            "alt_tool",
+            10,
+            (
+                Step("a_by_phone", "a"),
+                Step("b", "b"),
+                Step("c", "c"),
+                Step("d", "d"),
+            ),
+        ),
+        (
+            "split_call",
+            10,
+            (
+                Step("a", "a"),
+                Step("b_part", None),
+                Step("b_rest", "b"),
+                Step("c", "c"),
             ),
         ),
         (
@@ -144,7 +169,7 @@ def generate_episodes() -> list[Episode]:
         ),
         (
             "unknown",
-            15,
+            10,
             (
                 Step("a", "a"),
                 Step("look", None),
@@ -154,7 +179,7 @@ def generate_episodes() -> list[Episode]:
         ),
         (
             "repeat",
-            10,
+            5,
             (
                 Step("a", "a"),
                 Step("b", "b"),

@@ -3,28 +3,30 @@
   "stage": "P0",
   "status": "not_run",
   "question": "师生不一致时，不同但没错的步被 token KL 和动作匹配压分的比例",
-  "student": { "model": null },
-  "teacher": { "model": null, "samples_per_state": [1, 3], "logits_available": null },
+  "protocol": "docs/EXPERIMENTS.md#p0真实轨迹上的不一致",
+  "env": { "name": "tau2-bench", "domain": "retail", "split": "train", "min_tasks": 50 },
+  "student": { "model": null, "rollouts_per_task": 4 },
+  "teacher": { "model": null, "greedy": 1, "samples_per_state": 4, "temperature": 1.0, "logits_available": null },
   "labels": [
     "order",
     "different_tool",
     "different_granularity",
     "harmless_extra",
     "wrong",
-    "critical_error"
+    "critical_error",
+    "unclear"
   ],
-  "loss": {
-    "implemented": false,
-    "progress_kl": 0,
-    "neutral_kl": 0,
-    "error_kl": 1,
-    "agreement_bonus_non_negative": true,
-    "outcome_reward": true
+  "labeling": { "min_divergent_steps": 300, "double_labeled_steps": 100, "min_kappa": 0.6 },
+  "gate": {
+    "token_downscore": "below 10th percentile of greedy-matched steps",
+    "action_downscore": "at most 1 of 4 teacher samples match",
+    "min_valid_difference_share": 0.2,
+    "min_downscored_share": 0.5
   },
   "metrics": [
     "count_by_label",
-    "token_kl_by_label",
+    "token_downscore_rate_by_label",
     "action_match_by_label"
   ],
-  "notes": "占位。不要把 results/m0-mechanism-001 或 test_loss_spec 的数字填进来。"
+  "notes": "占位。门槛在跑之前写死。不要把 results/m0-mechanism-001 或 test_loss_spec 的数字填进来。"
 }

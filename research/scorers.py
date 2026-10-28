@@ -1,15 +1,14 @@
 """Scorers compared by the mechanism fixture.
 
-action_match imitates same-state teacher-action agreement.
-flat_checklist ignores dependencies and environment failure.
-dars_like is a tiny potential difference, not a reimplementation of DARS.
-rubricgate_v1 is the score-only rule. rubricgate_v2 additionally chooses
+Action match compares the called action with same-state teacher actions.
+flat_reward ignores dependencies and environment failure.
+replay_potential is a bare potential difference, not a reimplementation of DARS.
+replay_score is the score-only rubric rule. replay_gate also chooses
 continue / intervene / stop and keeps teacher progress off the student return.
 """
 
 from __future__ import annotations
 
-import random
 from dataclasses import dataclass, field
 
 from research.toyenv import Dag, Episode, Step, classify, transition, unlocked
@@ -55,23 +54,12 @@ def teacher_probs(ready: tuple[str, ...], prefer_b: float) -> dict[str, float]:
     return {name: share for name in ready}
 
 
-def sample_teacher(
-    ready: tuple[str, ...], prefer_b: float, k: int, rng: random.Random
-) -> list[str]:
-    probs = teacher_probs(ready, prefer_b)
-    if not probs or k <= 0:
-        return []
-    names = list(probs)
-    weights = [probs[name] for name in names]
-    return [rng.choices(names, weights=weights, k=1)[0] for _ in range(k)]
+def match_score(action: str, samples: list[str]) -> float:
+    """Fraction of same-state teacher samples equal to the student action."""
 
-
-def match_score(target: str | None, samples: list[str]) -> float:
-    """Fraction of same-state teacher samples equal to the student target."""
-
-    if target is None or not samples:
+    if not samples:
         return 0.0
-    return sum(sample == target for sample in samples) / len(samples)
+    return sum(sample == action for sample in samples) / len(samples)
 
 
 def flat_reward(dag: Dag, done: frozenset[str], step: Step) -> float:

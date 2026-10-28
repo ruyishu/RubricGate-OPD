@@ -8,9 +8,11 @@ from research.loss_spec import (
     COMMIT_WEIGHT,
     READ_WEIGHT,
     StudentStep,
-    agreement_bonus,
+    candidate_reward,
+    consults_teacher,
     kl_coefficient,
     rubric_delta,
+    stall_flags,
     student_returns,
 )
 
@@ -24,26 +26,42 @@ class LossSpecTest(unittest.TestCase):
         self.assertEqual(commit, 1.0)
         self.assertEqual(undone, -0.2)
 
+    def test_stall_needs_a_run_of_unchanged_steps(self) -> None:
+        changed = [True, False, False, False, True, False]
+        self.assertEqual(stall_flags(changed, k=3), [False, False, False, True, False, False])
+
     def test_progress_turns_teacher_kl_off(self) -> None:
         self.assertEqual(kl_coefficient("progress", committing=False), 0.0)
-        self.assertEqual(kl_coefficient("progress", committing=True), 0.0)
+        self.assertEqual(kl_coefficient("progress", committing=True, stalled=True), 0.0)
 
-    def test_neutral_steps_use_the_ablation_weight(self) -> None:
+    def test_isolated_no_change_steps_use_the_ablation_weight(self) -> None:
         for label in ("neutral_unknown", "neutral_repeat", "neutral_no_effect"):
             self.assertEqual(kl_coefficient(label, committing=False), 0.0)
             self.assertEqual(kl_coefficient(label, committing=False, neutral=0.1), 0.1)
         self.assertEqual(kl_coefficient("dependency_block", committing=False, neutral=0.1), 0.1)
 
+    def test_stalled_steps_pull_toward_the_teacher(self) -> None:
+        self.assertEqual(kl_coefficient("neutral_unknown", committing=False, stalled=True), 1.0)
+        self.assertEqual(kl_coefficient("dependency_block", committing=False, stalled=True), 1.0)
+
     def test_confirmed_errors_use_full_kl(self) -> None:
         self.assertEqual(kl_coefficient("invalidation", committing=False), 1.0)
         self.assertEqual(kl_coefficient("dependency_block", committing=True), 1.0)
 
-    def test_agreement_bonus_never_penalizes_a_mismatch_or_a_success(self) -> None:
-        self.assertEqual(agreement_bonus("progress", False, matched=True, bonus=0.1), 0.0)
-        self.assertEqual(agreement_bonus("neutral_unknown", False, matched=False, bonus=0.1), 0.0)
-        self.assertEqual(agreement_bonus("invalidation", False, matched=False, bonus=0.1), 0.0)
-        self.assertEqual(agreement_bonus("neutral_unknown", False, matched=True, bonus=0.1), 0.1)
-        self.assertEqual(agreement_bonus("dependency_block", True, matched=True, bonus=0.1), 0.1)
+    def test_teacher_is_consulted_only_on_errors_and_stalls(self) -> None:
+        self.assertFalse(consults_teacher("progress", False, stalled=True))
+        self.assertFalse(consults_teacher("neutral_unknown", False, stalled=False))
+        self.assertFalse(consults_teacher("dependency_block", False, stalled=False))
+        self.assertTrue(consults_teacher("neutral_unknown", False, stalled=True))
+        self.assertTrue(consults_teacher("invalidation", False, stalled=False))
+        self.assertTrue(consults_teacher("dependency_block", True, stalled=False))
+
+    def test_valid_alternative_is_not_ranked_below_a_teacher_match(self) -> None:
+        alternative = candidate_reward(progressed=True, broke=False, agreement=0.0)
+        teacher_like = candidate_reward(progressed=False, broke=False, agreement=1.0)
+        self.assertGreaterEqual(alternative, teacher_like)
+        self.assertEqual(candidate_reward(progressed=False, broke=False, agreement=0.25), 0.25)
+        self.assertEqual(candidate_reward(progressed=True, broke=True, agreement=1.0), 0.0)
 
     def test_handoff_hides_later_return_from_the_replaced_action(self) -> None:
         steps = [

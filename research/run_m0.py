@@ -66,8 +66,9 @@ def _match_rows(episodes, prefer_b: float, k: int) -> list[dict[str, str]]:
     for episode in episodes:
         done = frozenset()
         for step in episode.steps:
+            # Scripted teacher actions are named after the node they complete.
             probs = teacher_probs(unlocked(TRUE_DAG, done), prefer_b)
-            probability = 0.0 if step.target is None else probs.get(step.target, 0.0)
+            probability = probs.get(step.action, 0.0)
             zero_rate = (1.0 - probability) ** k
             below_full = 1.0 - (probability ** k)
             grouped[(episode.category, classify(TRUE_DAG, done, step), _situation(done))].append(
@@ -136,22 +137,26 @@ def _same_sign(left: list[dict[str, str]], right: list[dict[str, str]]) -> bool:
     )
 
 
-def _gate_rows(episodes, dag, max_interventions: int):
+def _gate_rows(episodes, dag, max_interventions: int) -> list[dict[str, str]]:
     counts: dict[tuple[str, str], int] = defaultdict(int)
-    leaked = 0
+    teacher_progress: dict[str, float] = defaultdict(float)
+    student_return: dict[str, float] = defaultdict(float)
     for episode in episodes:
         replay = replay_gate(dag, episode, max_interventions=max_interventions)
-        if abs(replay.student_return - sum(replay.student_step_rewards)) > 1e-9:
-            leaked += 1
-        for decision, reward in zip(replay.decisions, replay.student_step_rewards):
+        teacher_progress[episode.category] += replay.teacher_progress
+        student_return[episode.category] += replay.student_return
+        for decision in replay.decisions:
             counts[(episode.category, decision)] += 1
-            if decision == "intervene" and reward > 0:
-                leaked += 1
-    rows = [
-        {"category": category, "decision": decision, "count": str(count)}
+    return [
+        {
+            "category": category,
+            "decision": decision,
+            "count": str(count),
+            "category_student_return": f"{student_return[category]:.4f}",
+            "category_teacher_progress": f"{teacher_progress[category]:.4f}",
+        }
         for (category, decision), count in sorted(counts.items())
     ]
-    return rows, leaked, len(episodes)
 
 
 def _write_csv(path: Path, rows: list[dict[str, str]]) -> None:
@@ -182,11 +187,10 @@ def build_tables():
     ]
     for prefer_b, k in ((0.5, 1), (0.95, 1), (0.5, 3), (0.95, 3)):
         rows.extend(_match_rows(episodes, prefer_b, k))
-    gate_rows, leaked, checked = _gate_rows(episodes, TRUE_DAG, max_interventions=1)
-    return rows, gate_rows, leaked, checked
+    return rows, _gate_rows(episodes, TRUE_DAG, max_interventions=1)
 
 
-def _notes(rows: list[dict[str, str]], leaked: int, checked: int) -> str:
+def _notes(rows: list[dict[str, str]]) -> str:
     peaked = _find(
         rows,
         setting="expected_p0.95_k1",
@@ -250,33 +254,66 @@ def _notes(rows: list[dict[str, str]], leaked: int, checked: int) -> str:
         category="legal_swap",
         situation="open_bc",
     )
+    env_fail_match = _find(
+        rows,
+        setting="expected_p0.95_k1",
+        scorer="action_match",
+        category="env_fail",
+        oracle_label="neutral_no_effect",
+    )
+    alt = _first("alt_tool")
+    split = _first("split_call")
+    alt_rubric = replay_score(TRUE_DAG, alt)
+    split_rubric = replay_score(TRUE_DAG, split)
+    alt_match = _expected_match(alt, 0, 0.95)
+    split_match = _expected_match(split, 2, 0.95)
     return f"""# M0 机制检查
 
 命令：`python -m research.run_m0`
 
-100 条手写模板轨迹，每条 4 步。`open_bc` 表示这一步开始时 b 和 c 都已解锁。标签来自正确 DAG 和环境结果。动作匹配行是脚本分布下的期望，不是抽样结果。
+100 条手写模板轨迹，每条 4 步。`open_bc` 表示这一步开始时 b 和 c 都已解锁。标签来自正确 DAG 和环境结果。动作匹配行是脚本分布下的期望，不是抽样结果。`scorer=rubricgate_v1` 是只打分、不改路径的评分点奖励。
 
 ## 这张表能说明什么
 
-- 正确 DAG 上，RubricGate v1 和势能差的奖励符号一致：新完成的子目标为正，破坏已完成子目标为负，其余为 0。势能差没有实现 DARS 的下游衰减，不能当成 DARS 复现。
-- 清单外动作平均奖励 {unknown["mean_reward"]}，负奖励比例 {unknown["negative_rate"]}。未解锁的付款步骤平均奖励 {blocked["mean_reward"]}，负奖励比例 {blocked["negative_rate"]}。工具名对了但环境没生效时平均奖励 {no_effect["mean_reward"]}。
+- 正确 DAG 上，评分点奖励和势能差的符号一致：新完成的子目标为正，破坏已完成子目标为负，其余为 0。势能差没有实现 DARS 的下游衰减，不能当成 DARS 复现。
+- 清单外动作平均奖励 {unknown["mean_reward"]}，负奖励比例 {unknown["negative_rate"]}。未解锁的付款步骤平均奖励 {blocked["mean_reward"]}，负奖励比例 {blocked["negative_rate"]}。工具名对了但环境没生效时平均奖励 {no_effect["mean_reward"]}；同一步的动作匹配期望是 {env_fail_match["mean_reward"]}。
+- 换工具（用手机号查到同一个订单）：评分点四步奖励是 {_fmt(alt_rubric)}；第一步的动作匹配期望是 {alt_match:.4f}。拆开调用：评分点四步奖励是 {_fmt(split_rubric)}；补完 b 的那一步动作匹配期望是 {split_match:.4f}。夹具里一步的效果就是它的目标子目标，所以「换工具也算完成」是构造出来的。真实检查器能不能认出来，要到 P1 才知道。
 - 平铺清单给未解锁付款步骤正奖励的比例是 {flat_block["positive_rate"]}。
 - 把 c 错标成必须在 b 之后后，合法换序那一步的平均奖励是 {wrong["mean_reward"]}。图错了，打分就跟着错。
 - 动作匹配的期望奖励等于学生动作在教师分布中的概率，候选数 k 不改变这个期望。b/c 都可做且教师以 0.95 偏好 b 时，老师那一步的期望奖励是 {preferred["mean_reward"]}，合法换序那一步是 {peaked["mean_reward"]}。k=1 时这步奖励为 0 的概率是 {peaked["zero_rate"]}；k=3 时期望仍是 {peaked_k3["mean_reward"]}，奖励为 0 的概率是 {peaked_k3["zero_rate"]}。偏好降到 0.50 且 k=3 时，期望奖励是 {neutral["mean_reward"]}，奖励为 0 的概率是 {neutral["zero_rate"]}。
-- 接管记账：{checked} 条轨迹里，学生回报与逐步学生奖励不一致、或接管步被记成正奖励的次数是 {leaked}。教师代打完成的子目标记在 `teacher_progress`，没有加进学生回报。
+- `gate_counts.csv` 按类别列出继续、接管、停止的次数，以及该类别的学生回报和老师代打进展之和。接管记账的具体断言在 `research/test_mechanism.py`。
 
 ## 这张表不能说明什么
 
-脚本偏好把「合法换序匹配分低」写进了分布，所以那个差距不能证明真实 OPD 存在同样严重的误罚。本表也没有训练，不能证明少误罚或多出来的接管能提高成功率。
+脚本里老师的动作名和偏好都是写死的，所以「换序、换工具、拆开调用的匹配分低」是分布里写进去的，不能证明真实 OPD 存在同样严重的误罚。本表也没有训练，不能证明少误罚或接管能提高成功率。
 """
 
 
+def _first(category: str):
+    for episode in generate_episodes():
+        if episode.category == category:
+            return episode
+    raise KeyError(category)
+
+
+def _expected_match(episode, index: int, prefer_b: float) -> float:
+    done = frozenset()
+    for step in episode.steps[:index]:
+        done, _ = transition(TRUE_DAG, done, step)
+    probs = teacher_probs(unlocked(TRUE_DAG, done), prefer_b)
+    return probs.get(episode.steps[index].action, 0.0)
+
+
+def _fmt(values: list[float]) -> str:
+    return "[" + ", ".join(f"{value:g}" for value in values) + "]"
+
+
 def main() -> None:
-    rows, gate_rows, leaked, checked = build_tables()
+    rows, gate_rows = build_tables()
     OUT.mkdir(parents=True, exist_ok=True)
     _write_csv(OUT / "metrics.csv", rows)
     _write_csv(OUT / "gate_counts.csv", gate_rows)
-    (OUT / "notes.md").write_text(_notes(rows, leaked, checked), encoding="utf-8")
+    (OUT / "notes.md").write_text(_notes(rows), encoding="utf-8")
     print(f"wrote {OUT}")
 
 

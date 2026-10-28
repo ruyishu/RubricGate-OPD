@@ -26,6 +26,14 @@ class MechanismTest(unittest.TestCase):
         rewards = replay_score(TRUE_DAG, _one("legal_swap"))
         self.assertEqual(rewards, [1.0, 1.0, 1.0, 1.0])
 
+    def test_alt_tool_and_split_call_keep_rubric_credit(self) -> None:
+        self.assertEqual(replay_score(TRUE_DAG, _one("alt_tool")), [1.0, 1.0, 1.0, 1.0])
+        self.assertEqual(replay_score(TRUE_DAG, _one("split_call")), [1.0, 0.0, 1.0, 1.0])
+
+    def test_action_match_misses_an_alt_tool_that_rubric_accepts(self) -> None:
+        self.assertEqual(match_score("a_by_phone", ["a", "a", "a"]), 0.0)
+        self.assertEqual(replay_score(TRUE_DAG, _one("alt_tool"))[0], 1.0)
+
     def test_unknown_repeat_and_env_fail_are_neutral(self) -> None:
         self.assertEqual(replay_score(TRUE_DAG, _one("unknown"))[1], 0.0)
         self.assertEqual(replay_score(TRUE_DAG, _one("repeat"))[2], 0.0)
@@ -70,10 +78,11 @@ class MechanismTest(unittest.TestCase):
         self.assertTrue(replay.stopped_early)
         self.assertEqual(replay.teacher_progress, 0.0)
 
-    def test_teacher_progress_is_not_inside_student_return(self) -> None:
-        _, _, leaked, checked = build_tables()
-        self.assertEqual(checked, 100)
-        self.assertEqual(leaked, 0)
+    def test_tables_cover_every_category(self) -> None:
+        rows, gate_rows = build_tables()
+        categories = {episode.category for episode in generate_episodes()}
+        self.assertEqual({row["category"] for row in rows}, categories)
+        self.assertEqual({row["category"] for row in gate_rows}, categories)
 
     def test_handmade_episode_rejects_pay_before_ready(self) -> None:
         episode = Episode(
