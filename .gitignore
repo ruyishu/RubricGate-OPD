@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# 本地环境与数据
+.local/
+data/
+datasets/
+checkpoints/
+*.safetensors
+*.bin
+*.pt
+*.ckpt
+
+# 日志与产物
+logs/
+runs/
+wandb/
+outputs/
+
+# 编辑器与系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 密钥
+.env
+*.key

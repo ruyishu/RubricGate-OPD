@@ -1,0 +1,23 @@
+{
+  "experiment_id": "m0-toy-001",
+  "stage": "M0",
+  "method": "rubricgate",
+  "env": {
+    "name": "toy_commutative",
+    "actions": ["a", "b", "c", "d"],
+    "preconditions": { "a": [], "b": ["a"], "c": ["a"], "d": ["b", "c"] },
+    "teacher_order_preference_p_b_first": 0.95,
+    "seed": 0
+  },
+  "student": { "model": "toy_softmax", "swap_preference": 0.5 },
+  "controller": {
+    "mode": "three_way",
+    "max_interventions": 1,
+    "zero_progress_streak": 2,
+    "fast_path": true
+  },
+  "baselines": ["token_opd_proxy", "stride_proxy"],
+  "metrics": ["false_penalty_rate", "branch_survival", "success_rate", "late_node_coverage"],
+  "budget": { "rollouts": 200 },
+  "notes": "占位模板；数值为示例，不是已跑结果。"
+}
