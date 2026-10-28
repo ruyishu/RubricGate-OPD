@@ -1,18 +1,30 @@
 {
-  "experiment_id": "m0b-teacher-probe",
-  "stage": "M0b",
+  "experiment_id": "p0-disagreement-probe",
+  "stage": "P0",
   "status": "not_run",
-  "question": "在真实教师下，合法换序被压分的比例有多大",
+  "question": "师生不一致时，不同但没错的步被 token KL 和动作匹配压分的比例",
   "student": { "model": null },
-  "teacher": { "model": null, "samples_per_state": [1, 3] },
-  "rubric": { "source": "manual_or_schema", "report_wrong_dag": true },
-  "controller": {
-    "score_only": true,
-    "intervention": false,
-    "unknown_action_reward": 0,
-    "require_env_verification": true
+  "teacher": { "model": null, "samples_per_state": [1, 3], "logits_available": null },
+  "labels": [
+    "order",
+    "different_tool",
+    "different_granularity",
+    "harmless_extra",
+    "wrong",
+    "critical_error"
+  ],
+  "loss": {
+    "implemented": false,
+    "progress_kl": 0,
+    "neutral_kl": 0,
+    "error_kl": 1,
+    "agreement_bonus_non_negative": true,
+    "outcome_reward": true
   },
-  "comparisons": ["token_opd", "action_match", "flat_checklist", "score_only_dag"],
-  "metrics": ["legal_downscore_rate", "unknown_false_penalty_rate", "violation_detection", "success_rate"],
-  "notes": "占位。不要把 results/m0-mechanism-001 的脚本期望填进这里。"
+  "metrics": [
+    "count_by_label",
+    "token_kl_by_label",
+    "action_match_by_label"
+  ],
+  "notes": "占位。不要把 results/m0-mechanism-001 或 test_loss_spec 的数字填进来。"
 }
