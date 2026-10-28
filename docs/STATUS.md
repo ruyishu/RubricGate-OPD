@@ -4,26 +4,25 @@
 
 ## 当前
 
-设计阶段。仓库只有文档，没有代码、没有实验、没有分数。
+设计已按 GraphOPD、DARS、GEAR、CD-OPD 收紧。仓库里有文档和一个 CPU 机制夹具，没有训练器，没有模型分数。
 
-## 已完成
+## 已核对
 
-- 方法定义（docs/METHOD.md）：DAG-Rubric、解锁池、三态门控、动作级优势。
-- 相关工作对照（docs/RELATED_WORK.md）：ActionOPD / TASPO / R²-OPD / SOPD / SOD / STRIDE / TISD / TRD / MENTOR / ROPD / RELAY。
-- 实验计划与里程碑（plan.md、docs/EXPERIMENTS.md）。
+- 方法边界写在 `docs/METHOD.md`：第一版只打分；清单外动作不是错误；环境结果才算完成；接管是第二阶段，代打进展不进学生回报。
+- 相关工作补了 GraphOPD（2610.08959）、DARS（2610.01207）、GEAR（2606.03361）、CD-OPD（2610.25359）。DARS 附录 E 有逐轮读前缀的设置。
+- 机制夹具：`python -m unittest research.test_mechanism`，12 项通过；`python -m research.run_m0` 写出 `results/m0-mechanism-001/`。
 
-## 未开始
+## 夹具结论
 
-- M0 toy pilot（下一步，见 docs/START_HERE.md）
-- 真实模型 pilot
-- rubric 一致率测量
+规则自检通过，包括错误 DAG 和接管记账。v1 奖励和简化势能差的符号一致，所以依赖打分本身没有显示出相对 DARS 的新差异。动作匹配的低分来自脚本分布，不能外推成真实教师的误罚率。
 
-## 未验证的假设
+## 未验证
 
-- 合法换序在真实 token-OPD 下确实被显著惩罚（只在文献间接支持，未自测）。
-- DAG-Rubric 可以由工具 schema 半自动构造且质量够用。
-- 改造步的 off-policy 拼接能训稳。
+- 真实 token-OPD 或 ActionOPD 是否显著误罚合法换序。
+- 减少错误干预能否提高成功率。
+- 自动构造的 DAG 是否够用。
+- 接管后的截断回报能否训稳。
 
 ## 证据
 
-无。
+只有 `results/m0-mechanism-001` 的规则表。没有成功率。

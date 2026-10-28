@@ -1,23 +1,18 @@
 {
-  "experiment_id": "m0-toy-001",
-  "stage": "M0",
-  "method": "rubricgate",
-  "env": {
-    "name": "toy_commutative",
-    "actions": ["a", "b", "c", "d"],
-    "preconditions": { "a": [], "b": ["a"], "c": ["a"], "d": ["b", "c"] },
-    "teacher_order_preference_p_b_first": 0.95,
-    "seed": 0
-  },
-  "student": { "model": "toy_softmax", "swap_preference": 0.5 },
+  "experiment_id": "m0b-teacher-probe",
+  "stage": "M0b",
+  "status": "not_run",
+  "question": "在真实教师下，合法换序被压分的比例有多大",
+  "student": { "model": null },
+  "teacher": { "model": null, "samples_per_state": [1, 3] },
+  "rubric": { "source": "manual_or_schema", "report_wrong_dag": true },
   "controller": {
-    "mode": "three_way",
-    "max_interventions": 1,
-    "zero_progress_streak": 2,
-    "fast_path": true
+    "score_only": true,
+    "intervention": false,
+    "unknown_action_reward": 0,
+    "require_env_verification": true
   },
-  "baselines": ["token_opd_proxy", "stride_proxy"],
-  "metrics": ["false_penalty_rate", "branch_survival", "success_rate", "late_node_coverage"],
-  "budget": { "rollouts": 200 },
-  "notes": "占位模板；数值为示例，不是已跑结果。"
+  "comparisons": ["token_opd", "action_match", "flat_checklist", "score_only_dag"],
+  "metrics": ["legal_downscore_rate", "unknown_false_penalty_rate", "violation_detection", "success_rate"],
+  "notes": "占位。不要把 results/m0-mechanism-001 的脚本期望填进这里。"
 }

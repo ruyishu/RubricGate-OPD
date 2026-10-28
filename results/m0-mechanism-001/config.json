@@ -1,0 +1,10 @@
+{
+  "experiment_id": "m0-mechanism-001",
+  "stage": "M0",
+  "command": "python -m research.run_m0",
+  "episodes": 100,
+  "steps_per_episode": 4,
+  "action_match": "expected frequency under a scripted teacher, not a sampled model",
+  "wrong_dag": "c annotated as requiring b",
+  "tests": "python -m unittest research.test_mechanism"
+}

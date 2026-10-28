@@ -1,0 +1,11 @@
+category,decision,count
+canonical,continue,60
+committing_block,continue,45
+committing_block,intervene,15
+env_fail,continue,40
+invalidation,continue,15
+invalidation,intervene,5
+legal_swap,continue,80
+noncommit_block,continue,40
+repeat,continue,40
+unknown,continue,60
